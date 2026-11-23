@@ -131,6 +131,22 @@ wins against. `validatorForRollup(client, rollupId)` picks `qledgerValidator` or
 `transitionRootValidator` by the rollup's execution VM; `qorollup watchtower
 --canonical` uses it.
 
+### In the other languages
+
+The same judge is in every client. Each caches honest ledgers by state root
+(32 by default), reads entries from the node unless you pass a reader, and
+raises an error, never "invalid", for a batch it cannot decide:
+
+| Language | Judge | Predicate | Proof |
+|---|---|---|---|
+| Go | `rdk.NewQledgerJudge(client, rollupID, opts)`, `(*QledgerJudge).Judge(ctx, batch)` | `rdk.QledgerValidator(...)` → `func(ctx, BatchView) (bool, error)` | `rdk.QledgerFraudProofForBatch(ctx, client, rollupID, batch, opts)` |
+| Rust | `qledger::QledgerJudge::new(&client, rollup_id, options)`, `judge(&mut self, &batch)` | `qledger::qledger_validator(...)` → `FnMut(&BatchView) -> Result<bool, QledgerError>` | `qledger::qledger_fraud_proof_for_batch(...)` |
+| Python | `qorrdk.QledgerJudge(client, rollup_id, read_entries=…, max_cached_states=…)`, `.judge(batch)` | `qorrdk.qledger_validator(...)` → `Callable[[BatchView], bool]` | `qorrdk.qledger_fraud_proof_for_batch(...)` |
+| Java | `new watchtower.QledgerJudge(client, rollupId, options)`, `judge(batch)` | `Watchtower.qledgerValidator(...)` → `Predicate<BatchView>` | `Watchtower.qledgerFraudProofForBatch(...)` |
+
+These clients have no `watchBatches`, so call the predicate from your own
+polling loop, and send the proof with the client's `challengeBatch`.
+
 ## Settlement from chain v3.2.5
 
 On a chain running v3.2.5 (`rdk-challenge-settlement`; mainnet since block
